@@ -1,0 +1,58 @@
+name: Codex Reset Monitor
+
+on:
+  schedule:
+    # 每小时的 2、7、12、17... 分执行
+    # 相当于每 5 分钟一次
+    - cron: "2-57/5 * * * *"
+
+  workflow_dispatch:
+    inputs:
+      test_push:
+        description: "发送一条微信测试通知"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: codex-reset-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Codex Reset
+        env:
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          TEST_PUSH: ${{ github.event_name == 'workflow_dispatch' && inputs.test_push && '1' || '0' }}
+        run: python monitor.py
+
+      - name: Save state
+        if: always()
+        run: |
+          if git diff --quiet state.json; then
+            echo "State unchanged"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add state.json
+          git commit -m "chore: update codex reset state"
+          git push
