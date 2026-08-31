@@ -1,2 +1,2 @@
 # codex-reset-wechat
-Codex reset 微信提醒
+Codex reset    Server酱app提醒
