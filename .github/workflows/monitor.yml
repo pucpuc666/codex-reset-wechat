@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       test_push:
-        description: "发送一条微信测试通知"
+        description: "发送一条 Server酱 App 测试通知"
         required: false
         type: boolean
         default: false
