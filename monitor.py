@@ -4,6 +4,7 @@ import re
 import sys
 import urllib.parse
 import urllib.request
+import time
 
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -20,22 +21,47 @@ DEDUP_WINDOW_MINUTES = 20
 
 
 def http_get_json(url):
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "codex-reset-serverchan-monitor/2.0"
-        },
+    last_error = None
+
+    for attempt in range(1, 4):
+        try:
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent":
+                        "codex-reset-serverchan-monitor/2.0"
+                },
+            )
+
+            with urllib.request.urlopen(
+                request,
+                timeout=20,
+            ) as response:
+                return json.loads(
+                    response.read().decode("utf-8")
+                )
+
+        except Exception as error:
+            last_error = error
+
+            print(
+                f"Codex Reset API 请求失败 "
+                f"({attempt}/3): {error}"
+            )
+
+            if attempt < 3:
+                wait_seconds = attempt * 5
+
+                print(
+                    f"{wait_seconds} 秒后重试..."
+                )
+
+                time.sleep(wait_seconds)
+
+    raise RuntimeError(
+        "Codex Reset API 连续请求失败 3 次: "
+        f"{last_error}"
     )
-
-    with urllib.request.urlopen(
-        request,
-        timeout=20,
-    ) as response:
-        return json.loads(
-            response.read().decode("utf-8")
-        )
-
-
 def send_serverchan(title, desp):
     sendkey = os.environ.get(
         "SERVERCHAN_SENDKEY",
